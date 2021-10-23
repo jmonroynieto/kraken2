@@ -31,12 +31,14 @@ NCBITaxonomy::NCBITaxonomy(string nodes_filename, string names_filename) {
 
   const string delim = "\t|\t";
   while (getline(nodes_file, line)) {
+    if (line == "") continue;
     line.pop_back();  // discard trailing
     line.pop_back();  //   "\t|"
     size_t pos1, pos2;
     pos1 = 0;
     int field_ct = 0;
     bool finished = false;
+    bool int_parsing_err = false;
     while (field_ct++ < 10 && ! finished) {  // tokenizing loop
       pos2 = line.find(delim, pos1);
       string token;
@@ -51,12 +53,24 @@ NCBITaxonomy::NCBITaxonomy(string nodes_filename, string names_filename) {
 
       switch (field_ct) {  // 1-based counting
         case 1 :  // node ID
-          node_id = (uint64_t) stoul(token);
+              try {
+                  node_id = (uint64_t) stoul(token);
+              } catch (std::invalid_argument const& ex) {
+                    std::cout << "Error while reading node_id of nodes file with function: " << ex.what() << " bad input: " << token << "\n";
+                    int_parsing_err = true ;
+              }
+//          node_id = (uint64_t) stoul(token);
           if (node_id == 0)
             errx(EX_DATAERR, "attempt to create taxonomy w/ node ID == 0");
           break;
         case 2 : // parent ID
-          parent_id = (uint64_t) stoul(token);
+              try {
+                  parent_id = (uint64_t) stoul(token);
+              } catch (std::invalid_argument const& ex) {
+                    std::cout << "Error while reading parent_id of nodes file with function: " << ex.what() << "bad input: " << token << "\n" ;
+                    int_parsing_err = true;
+              }
+//          parent_id = (uint64_t) stoul(token);
           break;
         case 3 : // rank
           rank = token;
@@ -70,8 +84,10 @@ NCBITaxonomy::NCBITaxonomy(string nodes_filename, string names_filename) {
     child_map_[parent_id].insert(node_id);
     rank_map_[node_id] = rank;
     known_ranks_.insert(rank);
+  if (int_parsing_err == true) {
+        errx(EX_DATAERR, "malformed taxonomy, see above for errors");
   }
-
+  }
   while (getline(names_file, line)) {
     line.pop_back();  // discard trailing
     line.pop_back();  //   "\t|"
@@ -79,6 +95,7 @@ NCBITaxonomy::NCBITaxonomy(string nodes_filename, string names_filename) {
     pos1 = 0;
     int field_ct = 0;
     bool finished = false;
+    bool int_parsing_err = false;
     while (field_ct++ < 10 && ! finished) {  // tokenizing loop
       pos2 = line.find(delim, pos1);
       string token;
@@ -92,8 +109,13 @@ NCBITaxonomy::NCBITaxonomy(string nodes_filename, string names_filename) {
       }
 
       switch (field_ct) {  // 1-based counting
-        case 1 :  // node ID
-          node_id = (uint64_t) stoul(token);
+          case 1 :  // node ID
+              try {
+                  node_id = (uint64_t) stoul(token);
+              } catch (std::invalid_argument const& ex) {
+                    std::cout << "Error while reading node_id from names file with function: " << ex.what() << "bad input: " << token << "\n" ;
+                    int_parsing_err = true ;
+              }
           if (node_id == 0)
             errx(EX_DATAERR, "attempt to create taxonomy w/ node ID == 0");
           break;
@@ -107,8 +129,10 @@ NCBITaxonomy::NCBITaxonomy(string nodes_filename, string names_filename) {
           break;
       }
     }  // end tokenizing loop
+  if (int_parsing_err == true) {
+        errx(EX_DATAERR, "malformed taxonomy, see above for errors");
   }
-
+  }
   marked_nodes_.insert(1);  // mark root node
 }
 
